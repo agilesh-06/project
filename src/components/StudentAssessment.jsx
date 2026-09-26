@@ -22,6 +22,7 @@ import {
 import confetti from 'canvas-confetti';
 import { getAssessmentForRole, SECTOR_ASSESSMENTS } from '../data/sectorAssessments';
 import { TARGET_ROLES } from '../data/rolesData';
+import { getAdaptiveTasksForRole } from '../data/adaptiveTasksData';
 
 export default function StudentAssessment({ 
   onSaveAssessment, 
@@ -107,6 +108,8 @@ export default function StudentAssessment({
           action: 'Practice full interview simulation questions in the AI Mock Interview.'
         }));
 
+    const adaptivePlan = getAdaptiveTasksForRole(assessmentData.roleTitle, scorePercent);
+
     const finalResults = {
       roleTitle: assessmentData.roleTitle,
       sectorName: assessmentData.sectorName,
@@ -116,6 +119,7 @@ export default function StudentAssessment({
       missedQuestions,
       masteredConcepts,
       recommendations,
+      adaptivePlan,
       categoryScores,
       weakestCategories: missedQuestions.map(q => q.topic).slice(0, 3),
       completedAt: new Date().toLocaleDateString()
@@ -133,22 +137,33 @@ export default function StudentAssessment({
     });
   };
 
-  // Fast-forward demo for hackathon judges
-  const handleLoadDemoAssessment = () => {
+  // Fast-forward demo for testing: simulate low score (<60%) or high score (100%)
+  const handleSimulateScore = (level = 'low') => {
     const demoAnswers = {};
+    const missed = [];
+    const mastered = [];
+
     questions.forEach((q, idx) => {
-      // Simulate realistic candidate: 3 right, 2 wrong
-      if (idx === 1 || idx === 3) {
-        demoAnswers[q.id] = (q.correctIndex + 1) % q.options.length; // intentional mistake
+      if (level === 'low') {
+        // Miss 3 questions -> 2/5 (40%) triggers Foundations Track
+        if (idx === 1 || idx === 2 || idx === 4) {
+          demoAnswers[q.id] = (q.correctIndex + 1) % q.options.length;
+          missed.push(q);
+        } else {
+          demoAnswers[q.id] = q.correctIndex;
+          mastered.push(q.topic);
+        }
       } else {
+        // High score -> 5/5 (100%) triggers Advanced Mastery Track
         demoAnswers[q.id] = q.correctIndex;
+        mastered.push(q.topic);
       }
     });
-    setSelectedAnswers(demoAnswers);
 
-    const missed = [questions[1], questions[3]].filter(Boolean);
+    setSelectedAnswers(demoAnswers);
     const correctCount = questions.length - missed.length;
     const scorePercent = Math.round((correctCount / questions.length) * 100);
+    const adaptivePlan = getAdaptiveTasksForRole(assessmentData.roleTitle, scorePercent);
 
     const demoResults = {
       roleTitle: assessmentData.roleTitle,
@@ -157,12 +172,18 @@ export default function StudentAssessment({
       correctCount,
       scorePercent,
       missedQuestions: missed,
-      masteredConcepts: [questions[0]?.topic, questions[2]?.topic, questions[4]?.topic].filter(Boolean),
-      recommendations: missed.map(q => q.basicToLearn),
+      masteredConcepts: mastered,
+      recommendations: missed.length > 0 ? missed.map(q => q.basicToLearn) : assessmentData.curriculumTracks.map(t => ({
+        concept: t.topic,
+        importance: `Advanced mastery level for ${t.level} candidate standing.`,
+        keyRule: 'You answered all diagnostic questions correctly! Move to system trade-offs.',
+        action: 'Practice full interview simulation questions in the AI Mock Interview.'
+      })),
+      adaptivePlan,
       categoryScores: {
         [assessmentData.sectorName || 'Core Sector']: scorePercent,
-        'Problem Solving': 70,
-        'Communication': 75
+        'Problem Solving': level === 'low' ? 55 : 95,
+        'Communication': level === 'low' ? 65 : 90
       },
       weakestCategories: missed.map(q => q.topic),
       completedAt: new Date().toLocaleDateString()
@@ -171,6 +192,13 @@ export default function StudentAssessment({
     setResults(demoResults);
     setIsSubmitted(true);
     if (onSaveAssessment) onSaveAssessment(demoResults);
+
+    confetti({
+      particleCount: 80,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: level === 'high' ? ['#10b981', '#06b6d4', '#8b5cf6'] : ['#f59e0b', '#ec4899', '#8b5cf6']
+    });
   };
 
   const answeredCount = Object.keys(selectedAnswers).length;
@@ -205,27 +233,51 @@ export default function StudentAssessment({
             </span>
           </div>
 
-          {/* Quick Demo Button for Hackathon Judges */}
-          <button
-            onClick={handleLoadDemoAssessment}
-            style={{
-              background: 'rgba(245, 158, 11, 0.15)',
-              border: '1px solid rgba(245, 158, 11, 0.4)',
-              color: '#fbbf24',
-              padding: '6px 14px',
-              borderRadius: '8px',
-              fontSize: '0.785rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-            title="Instant 1-click test simulation for hackathon judges"
-          >
-            <Sparkles size={14} />
-            <span>Load Demo Answers (Fast)</span>
-          </button>
+          {/* Quick Simulation Controls for Testing Both Tracks */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600 }}>Test Tracks:</span>
+            <button
+              onClick={() => handleSimulateScore('low')}
+              style={{
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                color: '#fbbf24',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+              title="Simulates 2/5 correct (40%): Triggers Foundations Track with basic daily missions"
+            >
+              <Sparkles size={13} />
+              <span>Simulate Low Score (40% · Basics)</span>
+            </button>
+
+            <button
+              onClick={() => handleSimulateScore('high')}
+              style={{
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.4)',
+                color: '#34d399',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+              title="Simulates 5/5 correct (100%): Triggers Advanced Mastery Track with enhanced challenges"
+            >
+              <Award size={13} />
+              <span>Simulate High Score (100% · Advanced)</span>
+            </button>
+          </div>
         </div>
 
         <h1 style={{ fontSize: '1.65rem', fontWeight: 800, color: '#f8fafc', margin: '0 0 6px' }}>
@@ -561,6 +613,129 @@ export default function StudentAssessment({
                     </div>
                     <div style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 600 }}>
                       {track.topic}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Section: Adaptive Daily Tasks Based on Diagnostic Performance */}
+          {results.adaptivePlan && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(20, 26, 42, 0.95) 0%, rgba(13, 19, 33, 0.98) 100%)',
+              border: `1px solid ${results.scorePercent >= 75 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
+              borderRadius: '20px',
+              padding: '24px 28px',
+              marginBottom: '28px',
+              boxShadow: results.scorePercent >= 75 ? '0 0 25px rgba(16, 185, 129, 0.15)' : '0 0 25px rgba(245, 158, 11, 0.15)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '8px',
+                    background: results.scorePercent >= 75 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Target size={18} color={results.scorePercent >= 75 ? '#34d399' : '#fbbf24'} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                        {results.adaptivePlan.activeTrack.trackName} — Assigned 7-Day Tasks
+                      </h4>
+                      <span style={{
+                        background: results.scorePercent >= 75 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                        color: results.scorePercent >= 75 ? '#34d399' : '#fbbf24',
+                        border: `1px solid ${results.scorePercent >= 75 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`,
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: '99px',
+                        textTransform: 'uppercase'
+                      }}>
+                        {results.adaptivePlan.activeTrack.trackTier}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '4px 0 0' }}>
+                      {results.scorePercent >= 75 
+                        ? 'Because you answered well (score >= 75%), you have unlocked enhanced production-grade challenges compared to the basic track.'
+                        : 'Because your diagnostic score was under 75%, we assigned you structured daily foundational tasks to master the basics first.'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => onNavigateToTab('roadmap')}
+                  className="btn-primary"
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '0.8rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>Open 7-Day Roadmap</span>
+                  <ArrowRight size={14} />
+                </button>
+              </div>
+
+              {/* Day-by-Day Cards Preview */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                {results.adaptivePlan.activeTrack.days.map((dayItem) => (
+                  <div
+                    key={dayItem.day}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid rgba(255, 255, 255, 0.07)',
+                      borderRadius: '12px',
+                      padding: '14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '8px'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: results.scorePercent >= 75 ? '#34d399' : '#fbbf24', textTransform: 'uppercase' }}>
+                          Day {dayItem.day} · {dayItem.duration}
+                        </span>
+                        <span style={{
+                          fontSize: '0.65rem',
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          background: dayItem.difficulty === 'Advanced' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                          color: dayItem.difficulty === 'Advanced' ? '#34d399' : '#fbbf24',
+                          fontWeight: 700
+                        }}>
+                          {dayItem.difficulty}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc', marginBottom: '4px' }}>
+                        {dayItem.title}
+                      </div>
+
+                      <p style={{ fontSize: '0.76rem', color: '#94a3b8', margin: '0 0 6px', lineHeight: 1.4 }}>
+                        {dayItem.goal}
+                      </p>
+                    </div>
+
+                    <div style={{
+                      fontSize: '0.72rem',
+                      color: '#cbd5e1',
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      padding: '6px 8px',
+                      borderRadius: '6px',
+                      borderLeft: `2px solid ${results.scorePercent >= 75 ? '#10b981' : '#f59e0b'}`
+                    }}>
+                      <strong style={{ color: '#fff' }}>Task:</strong> {dayItem.keyExercise}
                     </div>
                   </div>
                 ))}
