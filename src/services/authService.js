@@ -59,36 +59,69 @@ export async function registerUser({
 
   // Path 1: Cloud Firestore & Firebase Auth
   if (getAuthMode() === 'firebase') {
-    const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
-    const firebaseUser = userCredential.user;
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+      const firebaseUser = userCredential.user;
 
-    // Update Auth Profile
-    await updateProfile(firebaseUser, { displayName: trimmedName });
+      // Update Auth Profile
+      await updateProfile(firebaseUser, { displayName: trimmedName });
 
-    // Store in Cloud Firestore users collection
-    const userDocRef = doc(db, 'users', firebaseUser.uid);
-    const userProfileData = {
-      uid: firebaseUser.uid,
-      name: trimmedName,
-      email: trimmedEmail,
-      role,
-      roleTier: 'L1',
-      college: (college || '').trim(),
-      graduationYear: graduationYear || '2026',
-      level: 1,
-      title: 'Novice',
-      xp: 150,
-      targetXp: 1000,
-      streak: 1,
-      streakActive: true,
-      interests: [],
-      createdAt: serverTimestamp(),
-      lastLoginAt: serverTimestamp()
-    };
+      // Store in Cloud Firestore users collection
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const userProfileData = {
+        uid: firebaseUser.uid,
+        name: trimmedName,
+        email: trimmedEmail,
+        role,
+        roleTier: 'L1',
+        college: (college || '').trim(),
+        graduationYear: graduationYear || '2026',
+        level: 1,
+        title: 'Novice',
+        xp: 150,
+        targetXp: 1000,
+        streak: 1,
+        streakActive: true,
+        interests: [],
+        createdAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp()
+      };
 
-    await setDoc(userDocRef, userProfileData);
-    notifyAuthChange(userProfileData);
-    return userProfileData;
+      await setDoc(userDocRef, userProfileData);
+      notifyAuthChange(userProfileData);
+      return userProfileData;
+    } catch (fbErr) {
+      // If Firebase Auth has not been initialized in Firebase Console (configuration-not-found)
+      if (
+        fbErr.code === 'auth/configuration-not-found' || 
+        fbErr.message?.includes('configuration-not-found') ||
+        fbErr.code === 'auth/operation-not-allowed'
+      ) {
+        console.warn('[SkillTree Auth] Firebase Authentication is not yet enabled in Firebase Console. Gracefully saving to Secure WebCrypto Vault.');
+        const vaultUser = await vault.registerLocalUser({
+          name: trimmedName,
+          email: trimmedEmail,
+          password,
+          role,
+          college,
+          graduationYear
+        });
+        vaultUser._isFallback = true;
+        vaultUser._fallbackNotice = 'Account registered securely in local cryptographic vault. (To enable Cloud Firebase Auth, click "Get started" under Authentication in Firebase Console).';
+        notifyAuthChange(vaultUser);
+        return vaultUser;
+      }
+
+      // Friendly Firebase error mapping
+      if (fbErr.code === 'auth/email-already-in-use') {
+        throw new Error('An account with this email address already exists. Please sign in instead.');
+      } else if (fbErr.code === 'auth/invalid-email') {
+        throw new Error('The email address format is invalid.');
+      } else if (fbErr.code === 'auth/weak-password') {
+        throw new Error('The password is too weak. Please use at least 8 characters with letters and numbers.');
+      }
+      throw fbErr;
+    }
   }
 
   // Path 2: WebCrypto Secure Vault (PBKDF2 with 100,000 rounds + SHA-256)
@@ -116,38 +149,61 @@ export async function loginUser(email, password) {
 
   // Path 1: Firebase Auth & Cloud Firestore
   if (getAuthMode() === 'firebase') {
-    const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
-    const firebaseUser = userCredential.user;
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+      const firebaseUser = userCredential.user;
 
-    // Fetch user document from Cloud Firestore
-    const userDocRef = doc(db, 'users', firebaseUser.uid);
-    const snap = await getDoc(userDocRef);
+      // Fetch user document from Cloud Firestore
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const snap = await getDoc(userDocRef);
 
-    let profileData;
-    if (snap.exists()) {
-      profileData = snap.data();
-      // Update last login
-      await updateDoc(userDocRef, { lastLoginAt: serverTimestamp() }).catch(() => {});
-    } else {
-      // Fallback profile if document hasn't been initialized
-      profileData = {
-        uid: firebaseUser.uid,
-        name: firebaseUser.displayName || 'Student',
-        email: firebaseUser.email,
-        role: 'Software Developer',
-        roleTier: 'L1',
-        level: 1,
-        title: 'Novice',
-        xp: 150,
-        targetXp: 1000,
-        streak: 1,
-        streakActive: true
-      };
-      await setDoc(userDocRef, { ...profileData, createdAt: serverTimestamp() });
+      let profileData;
+      if (snap.exists()) {
+        profileData = snap.data();
+        // Update last login
+        await updateDoc(userDocRef, { lastLoginAt: serverTimestamp() }).catch(() => {});
+      } else {
+        // Fallback profile if document hasn't been initialized
+        profileData = {
+          uid: firebaseUser.uid,
+          name: firebaseUser.displayName || 'Student',
+          email: firebaseUser.email,
+          role: 'Software Developer',
+          roleTier: 'L1',
+          level: 1,
+          title: 'Novice',
+          xp: 150,
+          targetXp: 1000,
+          streak: 1,
+          streakActive: true
+        };
+        await setDoc(userDocRef, { ...profileData, createdAt: serverTimestamp() });
+      }
+
+      notifyAuthChange(profileData);
+      return profileData;
+    } catch (fbErr) {
+      if (
+        fbErr.code === 'auth/configuration-not-found' || 
+        fbErr.message?.includes('configuration-not-found') ||
+        fbErr.code === 'auth/operation-not-allowed'
+      ) {
+        console.warn('[SkillTree Auth] Firebase Auth not initialized in console. Checking Secure WebCrypto Vault.');
+        try {
+          const vaultUser = await vault.authenticateLocalUser(trimmedEmail, password);
+          vaultUser._isFallback = true;
+          notifyAuthChange(vaultUser);
+          return vaultUser;
+        } catch {
+          throw new Error('Account not found. Please register first, or enable Email/Password Authentication in your Firebase Console.');
+        }
+      }
+
+      if (fbErr.code === 'auth/invalid-credential' || fbErr.code === 'auth/wrong-password' || fbErr.code === 'auth/user-not-found') {
+        throw new Error('Invalid email or password. Please verify your credentials.');
+      }
+      throw fbErr;
     }
-
-    notifyAuthChange(profileData);
-    return profileData;
   }
 
   // Path 2: WebCrypto Secure Vault

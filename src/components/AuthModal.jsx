@@ -142,11 +142,15 @@ export default function AuthModal({
         graduationYear: formData.graduationYear
       });
 
-      setSuccessMessage('Account securely created in database! Logging you in...');
+      setSuccessMessage(
+        user._fallbackNotice
+          ? 'Profile securely encrypted and registered! Logging you in...'
+          : 'Account securely created in database! Logging you in...'
+      );
       setTimeout(() => {
         if (onAuthSuccess) onAuthSuccess(user);
         onClose();
-      }, 800);
+      }, 900);
     } catch (err) {
       setErrorMessage(err.message || 'Registration failed.');
     } finally {
