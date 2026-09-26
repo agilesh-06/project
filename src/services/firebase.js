@@ -45,8 +45,28 @@ export function getFirebaseConfig() {
  * Checks whether active Firebase credentials are provided.
  */
 export function isFirebaseConfigured() {
-  const cfg = getFirebaseConfig();
-  return Boolean(cfg && cfg.apiKey && cfg.projectId);
+  // 1. Check custom configured credentials in localStorage (configured via UI Database tab)
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.apiKey && parsed.projectId) {
+          return true;
+        }
+      } catch {
+        // Fall through
+      }
+    }
+  }
+
+  // 2. Only enable cloud Firebase if explicitly flagged in environment
+  if (import.meta.env.VITE_ENABLE_FIREBASE === 'true') {
+    const cfg = getFirebaseConfig();
+    return Boolean(cfg && cfg.apiKey && cfg.projectId);
+  }
+
+  return false;
 }
 
 /**
@@ -69,20 +89,21 @@ export function clearFirebaseConfig() {
   window.location.reload();
 }
 
-// Initialize Firebase App
+// Initialize Firebase App only when configured and enabled
 let app = null;
 let auth = null;
 let db = null;
 
-const activeConfig = getFirebaseConfig();
-
-if (activeConfig) {
-  try {
-    app = getApps().length === 0 ? initializeApp(activeConfig) : getApp();
-    auth = getAuth(app);
-    db = getFirestore(app);
-  } catch (err) {
-    console.warn('[SkillTree Firebase] Failed to initialize Firebase SDK:', err);
+if (isFirebaseConfigured()) {
+  const activeConfig = getFirebaseConfig();
+  if (activeConfig) {
+    try {
+      app = getApps().length === 0 ? initializeApp(activeConfig) : getApp();
+      auth = getAuth(app);
+      db = getFirestore(app);
+    } catch (err) {
+      console.warn('[SkillTree Firebase] Failed to initialize Firebase SDK:', err);
+    }
   }
 }
 

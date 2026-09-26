@@ -112,7 +112,11 @@ export async function registerLocalUser({
   // Derive cryptographic salt and hash
   const securityCredentials = await hashPassword(password);
 
-  const uid = 'vault_' + window.crypto.randomUUID();
+  const genId = typeof window !== 'undefined' && window.crypto?.randomUUID 
+    ? window.crypto.randomUUID() 
+    : (Date.now().toString(36) + Math.random().toString(36).substring(2));
+
+  const uid = 'vault_' + genId;
   const now = new Date().toISOString();
 
   const newUser = {
@@ -182,12 +186,16 @@ export async function authenticateLocalUser(email, password) {
  * Sets session token for local user
  */
 export function setLocalSession(user) {
+  const tokenGen = typeof window !== 'undefined' && window.crypto?.randomUUID 
+    ? window.crypto.randomUUID() 
+    : (Date.now().toString(36) + Math.random().toString(36).substring(2));
+
   const sessionData = {
     uid: user.uid,
     email: user.email,
     name: user.name,
     role: user.role,
-    token: 'jwt_' + window.crypto.randomUUID(),
+    token: 'jwt_' + tokenGen,
     expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000 // 7 days
   };
   localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(sessionData));
