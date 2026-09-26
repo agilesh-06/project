@@ -208,6 +208,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         targetRole={targetRole}
+        onSelectRole={(role) => setTargetRole(role)}
         onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
         onOpenRoleSelector={() => setIsRoleSelectorOpen(true)}
         onLoadDemoStudent={handleLoadDemoStudent}

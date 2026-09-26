@@ -24,6 +24,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useState } from 'react';
+import AIInterestHeaderBlock from './AIInterestHeaderBlock';
 
 export default function Header({ 
   userLevel, 
@@ -33,6 +34,7 @@ export default function Header({
   activeTab, 
   setActiveTab,
   targetRole,
+  onSelectRole,
   onOpenLeaderboard,
   onOpenRoleSelector,
   onLoadDemoStudent,
@@ -536,6 +538,13 @@ export default function Header({
           );
         })}
       </nav>
+
+      {/* AI Interest & Domain Recommender Header Block */}
+      <AIInterestHeaderBlock 
+        currentRole={targetRole}
+        onSelectRole={onSelectRole}
+        onNavigateToTab={setActiveTab}
+      />
     </header>
   );
 }
