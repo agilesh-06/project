@@ -157,7 +157,7 @@ export default function AuthModal({
 
       setSuccessMessage('Account securely created in database! Logging you in...');
       setTimeout(() => {
-        if (onAuthSuccess) onAuthSuccess(user);
+        if (onAuthSuccess) onAuthSuccess(user, true);
         onClose();
       }, 800);
     } catch (err) {
@@ -175,7 +175,7 @@ export default function AuthModal({
 
         setSuccessMessage('Account securely registered and encrypted! Logging you in...');
         setTimeout(() => {
-          if (onAuthSuccess) onAuthSuccess(fallbackUser);
+          if (onAuthSuccess) onAuthSuccess(fallbackUser, true);
           onClose();
         }, 800);
       } catch (vaultErr) {

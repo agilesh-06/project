@@ -23,6 +23,8 @@ import confetti from 'canvas-confetti';
 import { getAssessmentForRole, SECTOR_ASSESSMENTS } from '../data/sectorAssessments';
 import { TARGET_ROLES } from '../data/rolesData';
 import { getAdaptiveTasksForRole } from '../data/adaptiveTasksData';
+import { evaluateStudentKnowledge } from '../data/courseRecommendations';
+import { Star, Clock } from 'lucide-react';
 
 export default function StudentAssessment({ 
   onSaveAssessment, 
@@ -109,6 +111,7 @@ export default function StudentAssessment({
         }));
 
     const adaptivePlan = getAdaptiveTasksForRole(assessmentData.roleTitle, scorePercent);
+    const knowledgeEval = evaluateStudentKnowledge(assessmentData.roleTitle, scorePercent, missedQuestions, masteredConcepts);
 
     const finalResults = {
       roleTitle: assessmentData.roleTitle,
@@ -120,6 +123,7 @@ export default function StudentAssessment({
       masteredConcepts,
       recommendations,
       adaptivePlan,
+      knowledgeEval,
       categoryScores,
       weakestCategories: missedQuestions.map(q => q.topic).slice(0, 3),
       completedAt: new Date().toLocaleDateString()
@@ -164,6 +168,7 @@ export default function StudentAssessment({
     const correctCount = questions.length - missed.length;
     const scorePercent = Math.round((correctCount / questions.length) * 100);
     const adaptivePlan = getAdaptiveTasksForRole(assessmentData.roleTitle, scorePercent);
+    const knowledgeEval = evaluateStudentKnowledge(assessmentData.roleTitle, scorePercent, missed, mastered);
 
     const demoResults = {
       roleTitle: assessmentData.roleTitle,
@@ -180,6 +185,7 @@ export default function StudentAssessment({
         action: 'Practice full interview simulation questions in the AI Mock Interview.'
       })),
       adaptivePlan,
+      knowledgeEval,
       categoryScores: {
         [assessmentData.sectorName || 'Core Sector']: scorePercent,
         'Problem Solving': level === 'low' ? 55 : 95,
@@ -736,6 +742,135 @@ export default function StudentAssessment({
                       borderLeft: `2px solid ${results.scorePercent >= 75 ? '#10b981' : '#f59e0b'}`
                     }}>
                       <strong style={{ color: '#fff' }}>Task:</strong> {dayItem.keyExercise}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Section: Recommended Courses to Master Based on Knowledge Level */}
+          {results.knowledgeEval?.recommendedCourses && results.knowledgeEval.recommendedCourses.length > 0 && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(20, 24, 38, 0.98) 100%)',
+              border: '1px solid rgba(59, 130, 246, 0.35)',
+              borderRadius: '20px',
+              padding: '24px 28px',
+              marginBottom: '28px',
+              boxShadow: '0 0 25px rgba(59, 130, 246, 0.12)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '8px',
+                    background: 'rgba(59, 130, 246, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#93c5fd'
+                  }}>
+                    <BookOpen size={18} />
+                  </div>
+                  <div>
+                    <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+                      Recommended Courses to Master
+                    </h4>
+                    <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '4px 0 0' }}>
+                      {results.scorePercent >= 75
+                        ? 'Elevated mastery courses covering large-scale production architecture and interview system design.'
+                        : 'Foundational step-by-step courses to build rock-solid basics before attempting advanced topics.'}
+                    </p>
+                  </div>
+                </div>
+
+                <span style={{
+                  padding: '4px 10px',
+                  borderRadius: '99px',
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  color: '#93c5fd',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  {results.knowledgeEval.knowledgeLevel.split(' ')[0]} Standing
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '14px' }}>
+                {results.knowledgeEval.recommendedCourses.map((course) => (
+                  <div
+                    key={course.id}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '14px',
+                      padding: '18px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '10px'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <span style={{
+                          fontSize: '0.7rem',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          background: 'rgba(59, 130, 246, 0.2)',
+                          color: '#93c5fd',
+                          fontWeight: 700
+                        }}>
+                          {course.level}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.75rem', color: '#94a3b8' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <Clock size={12} /> {course.duration}
+                          </span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#fbbf24' }}>
+                            <Star size={12} fill="#fbbf24" /> {course.rating}
+                          </span>
+                        </div>
+                      </div>
+
+                      <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff', margin: '0 0 6px 0', lineHeight: 1.3 }}>
+                        {course.title}
+                      </h5>
+                      <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '0 0 10px 0', lineHeight: 1.4 }}>
+                        {course.description}
+                      </p>
+
+                      <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                        {course.skills.map((sk, sIdx) => (
+                          <span key={sIdx} style={{
+                            fontSize: '0.7rem',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            color: '#cbd5e1',
+                            padding: '2px 6px',
+                            borderRadius: '4px'
+                          }}>
+                            {sk}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div style={{
+                        background: 'rgba(0, 0, 0, 0.2)',
+                        borderRadius: '8px',
+                        padding: '8px 10px'
+                      }}>
+                        <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, marginBottom: '4px' }}>
+                          Curriculum Modules:
+                        </div>
+                        {course.curriculum.map((mod, mIdx) => (
+                          <div key={mIdx} style={{ fontSize: '0.72rem', color: '#cbd5e1', padding: '1px 0', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#3b82f6' }} />
+                            <span>{mod}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ))}

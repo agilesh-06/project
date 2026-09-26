@@ -21,7 +21,8 @@ import {
   UserPlus,
   LogOut,
   User,
-  ShieldCheck
+  ShieldCheck,
+  GraduationCap
 } from 'lucide-react';
 import { useState } from 'react';
 import AIInterestHeaderBlock from './AIInterestHeaderBlock';
@@ -40,7 +41,8 @@ export default function Header({
   onLoadDemoStudent,
   currentUser,
   onOpenAuth,
-  onSignOut
+  onSignOut,
+  onOpenDiagnostic
 }) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const xpPercent = Math.min(100, Math.round((currentXp / nextLevelXp) * 100));
@@ -174,6 +176,54 @@ export default function Header({
             <ChevronDown size={15} color="#94a3b8" style={{ marginLeft: '4px' }} />
           </button>
 
+          {/* Sector Diagnostic Evaluation Quick Button */}
+          {onOpenDiagnostic && (
+            <button
+              onClick={onOpenDiagnostic}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(59, 130, 246, 0.15) 100%)',
+                border: '1px solid rgba(139, 92, 246, 0.45)',
+                borderRadius: '14px',
+                padding: '8px 14px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 0 16px rgba(139, 92, 246, 0.15)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderColor = '#8b5cf6';
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(59, 130, 246, 0.25) 100%)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.45)';
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(59, 130, 246, 0.15) 100%)';
+              }}
+              title="Test basic knowledge in your sector to evaluate proficiency and get personalized courses"
+            >
+              <div style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '8px',
+                background: 'rgba(139, 92, 246, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <GraduationCap size={16} color="#c4b5fd" />
+              </div>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: '#a78bfa', fontWeight: 800, letterSpacing: '0.04em' }}>
+                  Diagnostic
+                </div>
+                <div style={{ fontSize: '0.825rem', fontWeight: 700, color: '#f8fafc', lineHeight: 1.2 }}>
+                  Evaluate Knowledge
+                </div>
+              </div>
+            </button>
+          )}
+
           {/* USER AUTH STATUS / PROFILE DROPDOWN */}
           {currentUser ? (
             <div style={{ position: 'relative' }}>
@@ -240,6 +290,35 @@ export default function Header({
                       <span>Encrypted Database Active</span>
                     </div>
                   </div>
+
+                  {onOpenDiagnostic && (
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onOpenDiagnostic();
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '8px 10px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#c4b5fd',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '4px'
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <GraduationCap size={14} color="#a78bfa" />
+                      <span>Evaluate Sector Knowledge</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => {

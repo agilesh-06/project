@@ -12,6 +12,7 @@ import RoleSelectorModal from './components/RoleSelectorModal';
 import InterestDomainFinder from './components/InterestDomainFinder';
 import EnhancedVoiceAssistant from './components/EnhancedVoiceAssistant';
 import AuthModal from './components/AuthModal';
+import OnboardingDiagnosticModal from './components/OnboardingDiagnosticModal';
 import { 
   subscribeToAuthChanges, 
   logoutUser, 
@@ -45,6 +46,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState('login'); // 'login' | 'register' | 'config'
+  const [isOnboardingDiagnosticOpen, setIsOnboardingDiagnosticOpen] = useState(false);
 
   // Listen for real-time authentication and session state changes
   useEffect(() => {
@@ -215,6 +217,7 @@ export default function App() {
         currentUser={currentUser}
         onOpenAuth={handleOpenAuth}
         onSignOut={handleSignOut}
+        onOpenDiagnostic={() => setIsOnboardingDiagnosticOpen(true)}
       />
 
       {/* Dynamic Content Views */}
@@ -360,11 +363,40 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         initialMode={authModalMode}
-        onAuthSuccess={(user) => {
+        onAuthSuccess={(user, isNewUser) => {
           setCurrentUser(user);
           if (user.role) setTargetRole(user.role);
           setLevelUpToast(`Welcome, ${user.name}! Connected to secure database.`);
           setTimeout(() => setLevelUpToast(null), 4000);
+
+          // As soon as the user creates an account, immediately launch sector questions to evaluate basic knowledge!
+          if (isNewUser || !user.hasCompletedDiagnostic) {
+            setTimeout(() => {
+              setIsOnboardingDiagnosticOpen(true);
+            }, 600);
+          }
+        }}
+      />
+
+      {/* New User Sector Diagnostic & Knowledge Evaluation Modal */}
+      <OnboardingDiagnosticModal
+        isOpen={isOnboardingDiagnosticOpen}
+        onClose={() => setIsOnboardingDiagnosticOpen(false)}
+        initialRole={targetRole}
+        studentName={currentUser?.name || 'Student'}
+        onComplete={(res) => {
+          if (res.roleTitle) setTargetRole(res.roleTitle);
+          setAssessmentResults(res);
+          if (currentUser?.uid) {
+            updateUserProfile(currentUser.uid, {
+              hasCompletedDiagnostic: true,
+              diagnosticScore: res.scorePercent,
+              role: res.roleTitle,
+              knowledgeLevel: res.knowledgeLevel
+            }).catch(() => {});
+          }
+          setLevelUpToast(`Knowledge Level Evaluated: ${res.knowledgeLevel}! 7-Day Roadmap & Recommended Courses Activated.`);
+          setTimeout(() => setLevelUpToast(null), 5000);
         }}
       />
 

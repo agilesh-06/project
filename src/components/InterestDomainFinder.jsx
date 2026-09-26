@@ -16,7 +16,8 @@ import {
   Check,
   Layers,
   ChevronRight,
-  Globe
+  Globe,
+  GraduationCap
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { TARGET_ROLES } from '../data/rolesData';
@@ -426,26 +427,60 @@ export default function InterestDomainFinder({
             </p>
           </div>
 
-          <button
-            onClick={() => handleConfirmRole(activeInterest.matchedRoleTitle)}
-            style={{
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              color: '#ffffff',
-              border: 'none',
-              padding: '13px 26px',
-              borderRadius: '12px',
-              fontWeight: 800,
-              fontSize: '0.925rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 18px rgba(16, 185, 129, 0.4)'
-            }}
-          >
-            <span>Lock In {activeInterest.matchedRoleTitle} & View Roadmap</span>
-            <ArrowRight size={17} />
-          </button>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => {
+                onSelectRole(activeInterest.matchedRoleTitle);
+                onNavigateToTab('assessment');
+              }}
+              style={{
+                background: 'rgba(139, 92, 246, 0.2)',
+                border: '1px solid rgba(139, 92, 246, 0.5)',
+                color: '#c4b5fd',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.3)';
+                e.currentTarget.style.borderColor = '#8b5cf6';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)';
+              }}
+            >
+              <GraduationCap size={16} />
+              <span>Take Diagnostic Test</span>
+            </button>
+
+            <button
+              onClick={() => handleConfirmRole(activeInterest.matchedRoleTitle)}
+              style={{
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: '#ffffff',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                fontWeight: 800,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 18px rgba(16, 185, 129, 0.4)'
+              }}
+            >
+              <span>Lock In & View Roadmap</span>
+              <ArrowRight size={17} />
+            </button>
+          </div>
         </div>
       )}
 
